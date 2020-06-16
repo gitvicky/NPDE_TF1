@@ -38,12 +38,6 @@ def setup(NN, NPDE, PDE, training_data):
                                          initialiser,
                                          GD_opt,
                                          QN_opt)
+            
     
-    train_data = {'t_i': training_data['X_i'][:,0:1], 'x_i': training_data['X_i'][:,1:2], 'u_i': training_data['u_i'],
-                  't_b': training_data['X_b'][:,0:1], 'x_b': training_data['X_b'][:,1:2], 'u_b': training_data['u_b'],
-                  't_f': training_data['X_f'][:,0:1], 'x_f': training_data['X_f'][:,1:2]
-                  }
-
-        
-    
-    return model, train_data 
+    return model, training_data 

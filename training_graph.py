@@ -32,26 +32,22 @@ class TrainingGraph(Network):
         # Creating the placeholders for the tensorflow variables
         self.sess = tf.compat.v1.Session()
         
-        self.t = tf.compat.v1.placeholder(tf.float32, shape=[None, 1])
-        self.x = tf.compat.v1.placeholder(tf.float32, shape=[None, 1])
-        self.u = self.forward(tf.concat([self.t, self.x], 1), self.weights, self.biases)
+        self.X = tf.compat.v1.placeholder(tf.float32, shape=[None, 1])
+        self.u = self.forward(self.X, self.weights, self.biases)
                 
-        self.t_i = tf.compat.v1.placeholder(tf.float32, shape=[None, 1])
-        self.x_i = tf.compat.v1.placeholder(tf.float32, shape=[None, 1])
+        self.X_i = tf.compat.v1.placeholder(tf.float32, shape=[None, 1])
         self.u_i = tf.compat.v1.placeholder(tf.float32, shape=[None, 1])
         
-        self.t_b = tf.compat.v1.placeholder(tf.float32, shape=[None, 1])
-        self.x_b = tf.compat.v1.placeholder(tf.float32, shape=[None, 1])
+        self.X_b = tf.compat.v1.placeholder(tf.float32, shape=[None, 1])
         self.u_b = tf.compat.v1.placeholder(tf.float32, shape=[None, 1])
 
-        self.t_f = tf.compat.v1.placeholder(tf.float32, shape=[None, 1]) 
-        self.x_f = tf.compat.v1.placeholder(tf.float32, shape=[None, 1])
+        self.X_f = tf.compat.v1.placeholder(tf.float32, shape=[None, 1])
+
         
         
-        
-        self.initial_loss = self.ic_func(self.t_i, self.x_i, self.u_i)  #Initial Loss 
-        self.boundary_loss =  self.bc_func(self.t_b, self.x_b, self.u_b)  #Boundary Loss
-        self.domain_loss = self.pde_func(self.t_f, self.x_f)
+        self.initial_loss = self.ic_func(self.X_i, self.u_i)  #Initial Loss 
+        self.boundary_loss =  self.bc_func(self.X_b, self.u_b)  #Boundary Loss
+        self.domain_loss = self.pde_func(self.X_f)
         
         
         self.loss = tf.reduce_mean(tf.square(self.initial_loss)) + \
@@ -60,43 +56,43 @@ class TrainingGraph(Network):
                     
         self.iteration = 1
         
-#        self.optimiser_GD = options.get_optimiser('GD', GD_opt)
-#        self.optimiser_QN = options.get_optimiser('QN', QN_opt, self.loss)
+        self.optimiser_GD = options.get_optimiser('GD', GD_opt)
+        self.optimiser_QN = options.get_optimiser('QN', QN_opt, self.loss)
                     
-        self.optimiser_GD = tf.compat.v1.train.AdamOptimizer()
+#        self.optimiser_GD = tf.compat.v1.train.AdamOptimizer()
         self.train_GD = self.optimiser_GD.minimize(self.loss)
         
-        self.optimiser_QN = tf.contrib.opt.ScipyOptimizerInterface(self.loss, 
-                                                                   method = 'L-BFGS-B', 
-                                                                   options = {'maxiter': 50000,
-                                                                              'maxfun': 50000,
-                                                                              'maxcor': 50,
-                                                                              'maxls': 50,
-                                                                              'ftol' : 1.0 * np.finfo(float).eps})
+#        self.optimiser_QN = tf.contrib.opt.ScipyOptimizerInterface(self.loss, 
+#                                                                   method = 'L-BFGS-B', 
+#                                                                   options = {'maxiter': 50000,
+#                                                                              'maxfun': 50000,
+#                                                                              'maxcor': 50,
+#                                                                              'maxls': 50,
+#                                                                              'ftol' : 1.0 * np.finfo(float).eps})
                 
         init = tf.compat.v1.global_variables_initializer()
         self.sess.run(init)
         
        
         
-    def ic_func(self, t, x, u):
-        u_pred = self.forward(tf.concat([t, x],1), self.weights, self.biases)
+    def ic_func(self, X, u):
+        u_pred = self.forward(X, self.weights, self.biases)
         ic_loss = u_pred - u
         return ic_loss
 
     
-    def bc_func(self, t, x, u):
-        u_pred = self.forward(tf.concat([t, x],1), self.weights, self.biases)
+    def bc_func(self, X, u):
+        u_pred = self.forward(X, self.weights, self.biases)
         bc_loss = u_pred - u 
         return bc_loss
     
-    def pde_func(self, t, x):
-        u = self.forward(tf.concat([t,x],1), self.weights, self.biases)
-        u_t = tf.gradients(u, t)[0]
-        u_x = tf.gradients(u, x)[0]
-        u_xx = tf.gradients(u_x, x)[0]
+    def pde_func(self, X):
+        u = self.forward(X, self.weights, self.biases)
         
-        pde_loss = u_t + u*u_x - 0.1*u_xx
+        u_X = tf.gradients(u, X)[0]
+        u_X = tf.gradients(u_X, X)[0]
+
+        pde_loss = u_X[:, 0:1] + u*u_X[:, 1:2] - 0.1*u_XX[:, 1:2]
         
         return pde_loss
     
@@ -107,9 +103,9 @@ class TrainingGraph(Network):
             
     def train(self, nIter, input_dict):
         
-        train_input = {self.t_i: input_dict['t_i'], self.x_i: input_dict['x_i'], self.u_i: input_dict['u_i'],
-                       self.t_b: input_dict['t_b'], self.x_b: input_dict['x_b'], self.u_b: input_dict['u_b'],
-                       self.t_f: input_dict['t_f'], self.x_f: input_dict['x_f']
+        train_input = {self.X_i: input_dict['X_i'], self.u_i: input_dict['u_i'],
+                       self.X_b: input_dict['X_b'], self.u_b: input_dict['u_b'],
+                       self.X_f: input_dict['X_f']
                        }
         
         start_time = time.time()
@@ -135,7 +131,7 @@ class TrainingGraph(Network):
         
             
     def predict(self, X):
-        u = self.sess.run(self.u, {self.t: X[:,0:1] , self.x: X[:,1:2]})  
+        u = self.sess.run(self.u, {self.X: X})
         return u 
                         
         
