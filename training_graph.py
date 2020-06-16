@@ -18,7 +18,7 @@ tf.compat.v1.set_random_seed(42)
 
 
 from network import Network
-#import boundary_conditions
+import boundary_conditions
 import options
 
 class TrainingGraph(Network):
@@ -26,28 +26,34 @@ class TrainingGraph(Network):
         
         super().__init__(layers, lb, ub, activation, initialiser)
         
+        self.layers = layers 
+        self.input_size = self.layers[0]
+        self.output_size = self.layers[-1]
+        
+        self.bc = boundary_conditions.select('Dirichlet')
+        
         # Initialize NNs
         self.weights, self.biases = self.initialize()
         
         # Creating the placeholders for the tensorflow variables
         self.sess = tf.compat.v1.Session()
         
-        self.X = tf.compat.v1.placeholder(tf.float32, shape=[None, 1])
+        self.X = tf.compat.v1.placeholder(tf.float32, shape=[None, self.input_size])
         self.u = self.forward(self.X, self.weights, self.biases)
                 
-        self.X_i = tf.compat.v1.placeholder(tf.float32, shape=[None, 1])
-        self.u_i = tf.compat.v1.placeholder(tf.float32, shape=[None, 1])
+        self.X_i = tf.compat.v1.placeholder(tf.float32, shape=[None, self.input_size])
+        self.u_i = tf.compat.v1.placeholder(tf.float32, shape=[None, self.output_size])
         
-        self.X_b = tf.compat.v1.placeholder(tf.float32, shape=[None, 1])
-        self.u_b = tf.compat.v1.placeholder(tf.float32, shape=[None, 1])
+        self.X_b = tf.compat.v1.placeholder(tf.float32, shape=[None, self.input_size])
+        self.u_b = tf.compat.v1.placeholder(tf.float32, shape=[None, self.output_size])
 
-        self.X_f = tf.compat.v1.placeholder(tf.float32, shape=[None, 1])
+        self.X_f = tf.compat.v1.placeholder(tf.float32, shape=[None, self.input_size])
 
         
         
         self.initial_loss = self.ic_func(self.X_i, self.u_i)  #Initial Loss 
         self.boundary_loss =  self.bc_func(self.X_b, self.u_b)  #Boundary Loss
-        self.domain_loss = self.pde_func(self.X_f)
+        self.domain_loss = self.pde_func(self.X_f) #Domain Loss
         
         
         self.loss = tf.reduce_mean(tf.square(self.initial_loss)) + \
@@ -59,17 +65,9 @@ class TrainingGraph(Network):
         self.optimiser_GD = options.get_optimiser('GD', GD_opt)
         self.optimiser_QN = options.get_optimiser('QN', QN_opt, self.loss)
                     
-#        self.optimiser_GD = tf.compat.v1.train.AdamOptimizer()
         self.train_GD = self.optimiser_GD.minimize(self.loss)
         
-#        self.optimiser_QN = tf.contrib.opt.ScipyOptimizerInterface(self.loss, 
-#                                                                   method = 'L-BFGS-B', 
-#                                                                   options = {'maxiter': 50000,
-#                                                                              'maxfun': 50000,
-#                                                                              'maxcor': 50,
-#                                                                              'maxls': 50,
-#                                                                              'ftol' : 1.0 * np.finfo(float).eps})
-                
+
         init = tf.compat.v1.global_variables_initializer()
         self.sess.run(init)
         
@@ -82,18 +80,31 @@ class TrainingGraph(Network):
 
     
     def bc_func(self, X, u):
-        u_pred = self.forward(X, self.weights, self.biases)
-        bc_loss = u_pred - u 
+#        u_pred = self.forward(X, self.weights, self.biases)
+#        bc_loss = u_pred - u 
+        bc_loss = self.bc(self.forward, X, u, self.weights, self.biases)
         return bc_loss
     
+#    def pde_func(self, X): This was giving some deviation in comparison to the inducidual gradient estimation. 
+#        u = self.forward(X, self.weights, self.biases)
+#        
+#        u_X = tf.gradients(u, X)[0]
+#        u_XX = tf.gradients(u_X, X)[0]
+#        
+#        pde_loss = u_X[:, 0:1] + u*u_X[:, 1:2] - 0.1*u_XX[:, 1:2]
+#        
+#        return pde_loss
+        
     def pde_func(self, X):
-        u = self.forward(X, self.weights, self.biases)
+        t = X[:, 0:1]
+        x = X[:, 1:2]
         
-        u_X = tf.gradients(u, X)[0]
-        u_X = tf.gradients(u_X, X)[0]
+        u = self.forward(tf.concat([t,x],1), self.weights, self.biases)
+        u_t = tf.gradients(u, t)[0]
+        u_x = tf.gradients(u, x)[0]
+        u_xx = tf.gradients(u_x, x)[0]
 
-        pde_loss = u_X[:, 0:1] + u*u_X[:, 1:2] - 0.1*u_XX[:, 1:2]
-        
+        pde_loss = u_t + u*u_x - 0.1*u_xx
         return pde_loss
     
     def callback_QN(self, loss):

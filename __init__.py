@@ -10,6 +10,6 @@ Initialising the NPDE TF 1
 from . import main 
 from . import network
 from . import training_graph
+form . import boundary_conditions
 from . import options 
-
 
