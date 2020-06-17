@@ -1,20 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Tue Jun 16 17:09:21 2020
+Created on Wed Jun 17 17:29:15 2020
 
-@author: Vicky
-"""
-
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Sat Jun 13 17:42:15 2020
 
 @author: Vicky
 
 Neural PDE - Tensorflow 1.14
-Testing with Allen Cahn Equation
+Testing with Korteweg de Vries Equation
 """
 
 import numpy as np 
@@ -31,15 +24,15 @@ NN_parameters = {
                 'input_neurons' : 2,
                 'output_neurons' : 1,
                 'num_layers' : 4,
-                'num_neurons' : 200
+                'num_neurons' : 64
                 }
 
 
 #Neural PDE Hyperparameters
 NPDE_parameters = {'Sampling_Method': 'Random',
-                   'N_initial' : 100, #Number of Randomly sampled Data points from the IC vector
-                   'N_boundary' : 100, #Number of Boundary Points
-                   'N_domain' : 10000 #Number of Domain points generated
+                   'N_initial' : 300, #Number of Randomly sampled Data points from the IC vector
+                   'N_boundary' : 300, #Number of Boundary Points
+                   'N_domain' : 20000 #Number of Domain points generated
                   }
 
 
@@ -58,14 +51,14 @@ PDE_parameters = {'Equation': 'u_t - 0.0001*u_xx + 5*u**3 -5*u',
 def pde_func(forward, X, w, b):
     t = X[:, 0:1]
     x = X[:, 1:2]
-    
+        
     u = forward(tf.concat([t,x],1), w, b)
     u_t = tf.gradients(u, t)[0]
     u_x = tf.gradients(u, x)[0]
     u_xx = tf.gradients(u_x, x)[0]
+    u_xxx = tf.gradients(u_xx, x)[0]
 
-    pde_loss = u_t - 0.0001*u_xx + 5*u**3 - 5*u
-
+    pde_loss = u_t + u*u_x + 0.0025*u_xxx
     
     return pde_loss
 
@@ -75,7 +68,7 @@ N_f = NPDE_parameters['N_domain']
 N_i = NPDE_parameters['N_initial']
 N_b = NPDE_parameters['N_boundary']
 
-data = scipy.io.loadmat('/Users/Vicky/Documents/Code/Neural-PDEs-Initial_Exp/Raissi_Docs/PINNs-master/main/Data/AC.mat')
+data = scipy.io.loadmat('/Users/Vicky/Documents/Code/Neural-PDEs-Initial_Exp/Raissi_Docs/PINNs-master/main/Data/KdV.mat')
 
 t = data['tt'].flatten()[:,None]
 x = data['x'].flatten()[:,None]
