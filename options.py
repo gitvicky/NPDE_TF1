@@ -15,10 +15,11 @@ import tensorflow as tf
 #Activation Function
 
 def get_activation(name):
-    return {
+    return {"sin": tf.math.sin,
             "tanh": tf.tanh,
-            "sigmoid": tf.sigmoid,
-            "relu": tf.nn.relu
+            "sigmoid": tf.nn.sigmoid,
+            "relu": tf.nn.relu,
+            "leaky_relu": tf.nn.leaky_relu,
             }[name]
     raise ValueError("Unknown Activation Function")
     

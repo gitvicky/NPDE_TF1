@@ -13,7 +13,7 @@ import numpy as np
 
 import training_graph
 
-def setup(NN, NPDE, PDE, training_data):
+def setup(NN, NPDE, PDE, training_data, pde_func):
     
     input_size = NN['input_neurons']
     num_layers = NN['num_layers']
@@ -37,7 +37,7 @@ def setup(NN, NPDE, PDE, training_data):
                                          activation, 
                                          initialiser,
                                          GD_opt,
-                                         QN_opt)
+                                         QN_opt, pde_func)
             
     
     return model, training_data 

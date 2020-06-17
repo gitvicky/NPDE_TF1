@@ -22,7 +22,7 @@ import boundary_conditions
 import options
 
 class TrainingGraph(Network):
-    def __init__(self, layers, lb, ub, activation, initialiser,GD_opt, QN_opt):
+    def __init__(self, layers, lb, ub, activation, initialiser,GD_opt, QN_opt, pde):
         
         super().__init__(layers, lb, ub, activation, initialiser)
         
@@ -31,6 +31,7 @@ class TrainingGraph(Network):
         self.output_size = self.layers[-1]
         
         self.bc = boundary_conditions.select('Dirichlet')
+        self.pde = pde
         
         # Initialize NNs
         self.weights, self.biases = self.initialize()
@@ -69,6 +70,7 @@ class TrainingGraph(Network):
         
 
         init = tf.compat.v1.global_variables_initializer()
+#        self.saver = tf.train.Saver()
         self.sess.run(init)
         
        
@@ -80,31 +82,12 @@ class TrainingGraph(Network):
 
     
     def bc_func(self, X, u):
-#        u_pred = self.forward(X, self.weights, self.biases)
-#        bc_loss = u_pred - u 
         bc_loss = self.bc(self.forward, X, u, self.weights, self.biases)
         return bc_loss
-    
-#    def pde_func(self, X): This was giving some deviation in comparison to the inducidual gradient estimation. 
-#        u = self.forward(X, self.weights, self.biases)
-#        
-#        u_X = tf.gradients(u, X)[0]
-#        u_XX = tf.gradients(u_X, X)[0]
-#        
-#        pde_loss = u_X[:, 0:1] + u*u_X[:, 1:2] - 0.1*u_XX[:, 1:2]
-#        
-#        return pde_loss
         
     def pde_func(self, X):
-        t = X[:, 0:1]
-        x = X[:, 1:2]
-        
-        u = self.forward(tf.concat([t,x],1), self.weights, self.biases)
-        u_t = tf.gradients(u, t)[0]
-        u_x = tf.gradients(u, x)[0]
-        u_xx = tf.gradients(u_x, x)[0]
+        pde_loss = self.pde(self.forward, X, self.weights, self.biases)
 
-        pde_loss = u_t + u*u_x - 0.1*u_xx
         return pde_loss
     
     def callback_QN(self, loss):
@@ -137,6 +120,7 @@ class TrainingGraph(Network):
                                 fetches = [self.loss], 
                                 loss_callback = self.callback_QN)
         
+#        self.saver.save(self.sess, "model.ckpt")
                                     
         print("Total Training Time : {}".format(time.time() - start_time))
         
