@@ -15,7 +15,7 @@ import tensorflow as tf
 np.random.seed(42)
 tf.compat.v1.set_random_seed(42)
 
-import options
+from . import options
 
 class Network(object):
     def __init__(self, layers, lb, ub, activation, initialiser):
