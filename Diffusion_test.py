@@ -79,7 +79,7 @@ N_f = NPDE_parameters['N_domain']
 N_i = NPDE_parameters['N_initial']
 N_b = NPDE_parameters['N_boundary']
 
-data = np.load('/Users/Vicky/Documents/Code/Numerical_Solvers/Diffusion_data_2d.npz')
+data = np.load('/Users/Vicky/Documents/Code/NPDE_TF1/Data/Diffusion_data_2d.npz')
 
 t = data['t'].flatten()[:,None]
 x = data['x'].flatten()[:,None]

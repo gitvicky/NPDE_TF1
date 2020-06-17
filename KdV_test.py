@@ -68,7 +68,7 @@ N_f = NPDE_parameters['N_domain']
 N_i = NPDE_parameters['N_initial']
 N_b = NPDE_parameters['N_boundary']
 
-data = scipy.io.loadmat('/Users/Vicky/Documents/Code/Neural-PDEs-Initial_Exp/Raissi_Docs/PINNs-master/main/Data/KdV.mat')
+data = scipy.io.loadmat('/Users/Vicky/Documents/Code/NPDE_TF1/Data/KdV.mat')
 
 t = data['tt'].flatten()[:,None]
 x = data['x'].flatten()[:,None]

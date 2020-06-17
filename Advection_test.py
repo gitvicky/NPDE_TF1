@@ -1,12 +1,31 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Sat Jun 13 17:42:15 2020
+Created on Wed Jun 17 22:50:04 2020
+
+
+Created on Wed Jun 17 22:18:52 2020
 
 @author: Vicky
 
+
 Neural PDE - Tensorflow 1.14
-Testing with Burgers 
+Testing with the Advection Equation
+
+This code solves the advection equation
+    U_t + vU_x = 0
+
+over the spatial domain of 0 <= x <= 1 that is discretized 
+into 103 nodes, with dx=0.01, using the Lax-Wendroff scheme 
+in Eq. (18.20) for an initial profile of a Gaussian curve, 
+defined by 
+    U(x,t) = exp(-200*(x-xc-v*t).^2)
+
+where xc=0.25 is the center of the curve at t=0.
+
+The periodic boundary conditions are applied either end of the domain.
+The velocity is v=1. The solution is iterated until t=1.5 seconds
+
 """
 
 import numpy as np 
@@ -23,23 +42,23 @@ NN_parameters = {
                 'input_neurons' : 2,
                 'output_neurons' : 1,
                 'num_layers' : 4,
-                'num_neurons' : 64,
+                'num_neurons' : 64
                 }
 
 
 #Neural PDE Hyperparameters
 NPDE_parameters = {'Sampling_Method': 'Random',
                    'N_initial' : 100, #Number of Randomly sampled Data points from the IC vector
-                   'N_boundary' : 100, #Number of Boundary Points
+                   'N_boundary' : 300, #Number of Boundary Points
                    'N_domain' : 5000 #Number of Domain points generated
                   }
 
 
 #PDE 
-PDE_parameters = {'Equation': 'u_t + u*u_x - 0.1*u_xx', 
+PDE_parameters = {'Equation': 'u_t + v*u_x', 
                   'order': 2,
-                  'lower_range': [0.0, -8.0], #Float 
-                  'upper_range': [10.0, 8.0], #Float
+                  'lower_range': [0.0, 0.0], #Float 
+                  'upper_range': [1.5, 1.0], #Float
                   'Boundary_Condition': "Dirichlet",
                   'Boundary_Vals' : None,
                   'Initial_Condition': None,
@@ -50,20 +69,12 @@ PDE_parameters = {'Equation': 'u_t + u*u_x - 0.1*u_xx',
 def pde_func(forward, X, w, b):
     t = X[:, 0:1]
     x = X[:, 1:2]
-    
+        
     u = forward(tf.concat([t,x],1), w, b)
     u_t = tf.gradients(u, t)[0]
     u_x = tf.gradients(u, x)[0]
-    u_xx = tf.gradients(u_x, x)[0]
 
-    pde_loss = u_t + u*u_x - 0.1*u_xx
-            
-#    u = forward(X, w, b)
-#        
-#    u_X = tf.gradients(u, X)[0]
-#    u_XX = tf.gradients(u_X, X)[0]
-#        
-#    pde_loss = u_X[:, 0:1] + u*u_X[:, 1:2] - 0.1*u_XX[:, 1:2]
+    pde_loss = u_t + 1.0*u_x 
     
     return pde_loss
 
@@ -73,11 +84,12 @@ N_f = NPDE_parameters['N_domain']
 N_i = NPDE_parameters['N_initial']
 N_b = NPDE_parameters['N_boundary']
 
-data = scipy.io.loadmat('/Users/Vicky/Documents/Code/NPDE_TF1/Data/burgers.mat')
+data = np.load('/Users/Vicky/Documents/Code/NPDE_TF1/Data/Advection.npz')
 
 t = data['t'].flatten()[:,None]
 x = data['x'].flatten()[:,None]
-Exact = np.real(data['usol']).T
+
+Exact = np.real(data['U'])
 
 X, T = np.meshgrid(x,t)
 
@@ -95,9 +107,6 @@ X_lb = np.hstack((T[:,0:1], X[:,0:1])) #Lower Boundary condition value of X (x =
 u_lb = Exact[:,0:1] #Bound Condition value of the field u at (x = 11) and T (t = 0...0.99)
 X_ub = np.hstack((T[:,-1:], X[:,-1:])) #Uppe r Boundary condition value of X (x = 1) and T (t = 0...0.99)
 u_ub = Exact[:,-1:] #Bound Condition value of the field u at (x = 11) and T (t = 0...0.99)
-
-u_lb = np.zeros((len(u_lb),1))
-u_ub = np.zeros((len(u_ub),1))
 
 X_b = np.vstack((X_lb, X_ub))
 u_b = np.vstack((u_lb, u_ub))
@@ -140,6 +149,7 @@ def moving_plot(u_actual, u_sol):
     plt.figure()
     plt.plot(0, 0, c = actual_col, label='Actual')
     plt.plot(0, 0, c = nn_col, label='NN', alpha = 0.5)
+    plt.legend()
     
     for ii in range(len(t)):
         plt.plot(x, u_actual[ii], c = actual_col)
