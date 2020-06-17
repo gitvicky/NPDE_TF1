@@ -1,13 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Wed Jun 17 17:29:15 2020
-
+Created on Wed Jun 17 22:18:52 2020
 
 @author: Vicky
 
+
 Neural PDE - Tensorflow 1.14
-Testing with Korteweg de Vries Equation
+Testing with Convection-Diffusion Equation
+
+Backward method to solve 1D reaction-diffusion equation:
+    u_t = D * u_xx + alpha * u
+    
+with Neumann boundary conditions 
+at x=0: u_x = sin(pi/2)
+at x=L: u_x = sin(3*pi/4) with L=1
+and initial condition u(x,0) = 4*x - 4*x**2
 """
 
 import numpy as np 
@@ -16,8 +24,15 @@ from matplotlib import pyplot as plt
 import scipy.io
 from pyDOE import lhs
 
-import main
+import os 
+npde_path = os.path.abspath('..')
+npde_path = npde_path + '/Neural_PDE'
 
+import sys 
+sys.path.insert(0, npde_path) 
+
+
+import Neural_PDE as npde
 # %%
 #Neural Network Hyperparameters
 NN_parameters = {
@@ -30,17 +45,17 @@ NN_parameters = {
 
 #Neural PDE Hyperparameters
 NPDE_parameters = {'Sampling_Method': 'Random',
-                   'N_initial' : 300, #Number of Randomly sampled Data points from the IC vector
+                   'N_initial' : 100, #Number of Randomly sampled Data points from the IC vector
                    'N_boundary' : 300, #Number of Boundary Points
-                   'N_domain' : 20000 #Number of Domain points generated
+                   'N_domain' : 5000 #Number of Domain points generated
                   }
 
 
 #PDE 
-PDE_parameters = {'Equation': 'u_t - 0.0001*u_xx + 5*u**3 -5*u', 
+PDE_parameters = {'Equation': 'u_t - D*u_xx - alpha*u', 
                   'order': 2,
-                  'lower_range': [0.0, -1.0], #Float 
-                  'upper_range': [1.0, 1.0], #Float
+                  'lower_range': [0.0, 0.0], #Float 
+                  'upper_range': [0.2, 1.0], #Float
                   'Boundary_Condition': "Dirichlet",
                   'Boundary_Vals' : None,
                   'Initial_Condition': None,
@@ -56,9 +71,8 @@ def pde_func(forward, X, w, b):
     u_t = tf.gradients(u, t)[0]
     u_x = tf.gradients(u, x)[0]
     u_xx = tf.gradients(u_x, x)[0]
-    u_xxx = tf.gradients(u_xx, x)[0]
 
-    pde_loss = u_t + u*u_x + 0.0025*u_xxx
+    pde_loss = u_t - 0.2*u_xx + 0.1*u
     
     return pde_loss
 
@@ -68,11 +82,12 @@ N_f = NPDE_parameters['N_domain']
 N_i = NPDE_parameters['N_initial']
 N_b = NPDE_parameters['N_boundary']
 
-data = scipy.io.loadmat('/Users/Vicky/Documents/Code/NPDE_TF1/Data/KdV.mat')
+data = np.load('/Users/Vicky/Documents/Code/NPDE_TF1/Data/ConvDiff_1D.npz')
 
-t = data['tt'].flatten()[:,None]
+t = data['t'].flatten()[:,None]
 x = data['x'].flatten()[:,None]
-Exact = np.real(data['uu']).T
+
+Exact = np.real(data['U_sol']).T
 
 X, T = np.meshgrid(x,t)
 
@@ -112,7 +127,7 @@ training_data = {'X_i': X_i, 'u_i': u_i,
 
 # %%
 
-model, input_dict = main.setup(NN_parameters, NPDE_parameters, PDE_parameters, training_data, pde_func)
+model, input_dict = npde.main.setup(NN_parameters, NPDE_parameters, PDE_parameters, training_data, pde_func)
 
 nIter  = 5000
 # %%

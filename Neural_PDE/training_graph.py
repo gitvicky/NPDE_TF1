@@ -17,9 +17,9 @@ np.random.seed(42)
 tf.compat.v1.set_random_seed(42)
 
 
-from network import Network
-import boundary_conditions
-import options
+from .network import Network
+from . import boundary_conditions
+from . import options
 
 class TrainingGraph(Network):
     def __init__(self, layers, lb, ub, activation, initialiser,GD_opt, QN_opt, pde):

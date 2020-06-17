@@ -22,8 +22,15 @@ from matplotlib import pyplot as plt
 import scipy.io
 from pyDOE import lhs
 
-import main
+import os 
+npde_path = os.path.abspath('..')
+npde_path = npde_path + '/Neural_PDE'
 
+import sys 
+sys.path.insert(0, npde_path) 
+
+
+import Neural_PDE as npde
 # %%
 #Neural Network Hyperparameters
 NN_parameters = {
@@ -63,7 +70,7 @@ def pde_func(forward, X, w, b):
     u_x = tf.gradients(u, x)[0]
     u_xx = tf.gradients(u_x, x)[0]
     u_xxx = tf.gradients(u_xx, x)[0]
-    u_xxxx = tf.gradients(u_xxx, x)[0]
+    u_xxxx = tf.gradients(u_xxx, x)[0]  
 
     pde_loss = u_t + u*u_x + u_xx + u_xxxx
     
@@ -120,7 +127,7 @@ training_data = {'X_i': X_i, 'u_i': u_i,
 
 # %%
 
-model, input_dict = main.setup(NN_parameters, NPDE_parameters, PDE_parameters, training_data, pde_func)
+model, input_dict = npde.main.setup(NN_parameters, NPDE_parameters, PDE_parameters, training_data, pde_func)
 
 nIter  = 5000
 # %%

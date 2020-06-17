@@ -11,7 +11,7 @@ Module : main
 """
 import numpy as np
 
-import training_graph
+from . import training_graph
 
 def setup(NN, NPDE, PDE, training_data, pde_func):
     
