@@ -153,7 +153,7 @@ model, input_dict = npde.main.setup(NN_parameters, NPDE_parameters, PDE_paramete
 nIter  = 5000
 # %%
 
-model.train(nIter, input_dict)
+loss = model.train(nIter, input_dict)
 
 
 # %%

@@ -38,7 +38,7 @@ NN_parameters = {
                 'input_neurons' : 2,
                 'output_neurons' : 1,
                 'num_layers' : 4,
-                'num_neurons' : 200
+                'num_neurons' : 64
                 }
 
 
@@ -126,7 +126,7 @@ training_data = {'X_i': X_i, 'u_i': u_i,
 
 # %%
 
-model, input_dict = npde.main.setup(NN_parameters, NPDE_parameters, PDE_parameters, training_data, pde_func)
+loss = model, input_dict = npde.main.setup(NN_parameters, NPDE_parameters, PDE_parameters, training_data, pde_func)
 
 nIter  = 5000
 # %%

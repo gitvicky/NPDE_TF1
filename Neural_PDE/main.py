@@ -15,6 +15,8 @@ from . import training_graph
 
 def setup(NN, NPDE, PDE, training_data, pde_func):
     
+    N_f = NPDE['N_domain']
+    
     input_size = NN['input_neurons']
     num_layers = NN['num_layers']
     num_neurons = NN['num_neurons']
@@ -36,8 +38,9 @@ def setup(NN, NPDE, PDE, training_data, pde_func):
                                          lb, ub,
                                          activation, 
                                          initialiser,
-                                         GD_opt,
-                                         QN_opt, pde_func)
+                                         N_f,
+                                         GD_opt, QN_opt,
+                                         pde_func)
             
     
     return model, training_data 

@@ -27,7 +27,7 @@ npde_path = os.path.abspath('..')
 #npde_path = npde_path + '/Neural_PDE'
 
 import sys 
-sys.path.insert(1, npde_path) 
+sys.path.insert(0, npde_path) 
 
 
 import Neural_PDE as npde
@@ -132,7 +132,7 @@ model, input_dict = npde.main.setup(NN_parameters, NPDE_parameters, PDE_paramete
 nIter  = 5000
 # %%
 
-model.train(nIter, input_dict)
+loss = model.train(nIter, input_dict)
 
 
 # %%

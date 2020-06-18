@@ -20,11 +20,13 @@ tf.compat.v1.set_random_seed(42)
 from .network import Network
 from . import boundary_conditions
 from . import options
+from .sampler import Sampler
 
-class TrainingGraph(Network):
-    def __init__(self, layers, lb, ub, activation, initialiser,GD_opt, QN_opt, pde):
+class TrainingGraph(Network, Sampler):
+    def __init__(self, layers, lb, ub, activation, initialiser, N_f, GD_opt, QN_opt, pde):
         
-        super().__init__(layers, lb, ub, activation, initialiser)
+        Network.__init__(self, layers, lb, ub, activation, initialiser)
+        Sampler.__init__(self, N_f, subspace_N = int(N_f/10))
         
         self.layers = layers 
         self.input_size = self.layers[0]
@@ -51,6 +53,7 @@ class TrainingGraph(Network):
         self.X_f = tf.compat.v1.placeholder(tf.float32, shape=[None, self.input_size])
 
         
+        self.residual_val = tf.reduce_mean(tf.square(self.pde_func(self.X_f)))
         
         self.initial_loss = self.ic_func(self.X_i, self.u_i)  #Initial Loss 
         self.boundary_loss =  self.bc_func(self.X_b, self.u_b)  #Boundary Loss
@@ -67,6 +70,8 @@ class TrainingGraph(Network):
         self.optimiser_QN = options.get_optimiser('QN', QN_opt, self.loss)
                     
         self.train_GD = self.optimiser_GD.minimize(self.loss)
+        
+        self.loss_list = []
         
 
         init = tf.compat.v1.global_variables_initializer()
@@ -92,10 +97,22 @@ class TrainingGraph(Network):
     
     def callback_QN(self, loss):
         self.iteration += 1
+        self.loss_list.append(loss)
         if self.iteration%10 ==0:
             print('Loss at iteration: ' + str(self.iteration) + " = " , loss)
             
+    def callback_GD(self, it, train_input):
+        elapsed = time.time() - self.init_time
+        loss_value = self.sess.run(self.loss, train_input)
+        self.loss_list.append(loss_value)
+        print('It: %d, Loss: %.3e, Time: %.2f' % 
+                  (it, loss_value, elapsed))
+        self.init_time = time.time()
+        
+            
     def train(self, nIter, input_dict):
+        
+        nIter_2 = int(nIter/2)
         
         train_input = {self.X_i: input_dict['X_i'], self.u_i: input_dict['u_i'],
                        self.X_b: input_dict['X_b'], self.u_b: input_dict['u_b'],
@@ -103,18 +120,39 @@ class TrainingGraph(Network):
                        }
         
         start_time = time.time()
-        init_time = time.time()
-        for it in range(nIter):
+        self.init_time = time.time()
+        
+        
+        for it in range(nIter_2):
             self.sess.run(self.train_GD, train_input)
             
             # Print
             if it % 10 == 0:
-                elapsed = time.time() - init_time
-                loss_value = self.sess.run(self.loss, train_input)
-                print('It: %d, Loss: %.3e, Time: %.2f' % 
-                      (it, loss_value, elapsed))
-                init_time = time.time()
-                                                                                                                          
+                self.callback_GD(it, train_input)
+
+        for it in range(nIter_2, nIter):
+            if it %500 ==0:
+                X_f = Sampler.str_sampler(self)
+                train_input = {self.X_i: input_dict['X_i'], self.u_i: input_dict['u_i'],
+                               self.X_b: input_dict['X_b'], self.u_b: input_dict['u_b'],
+                               self.X_f: X_f
+                               }       
+                
+            self.sess.run(self.train_GD, train_input)
+            
+            # Print
+            if it % 10 == 0:
+                self.callback_GD(it, train_input)
+
+                                    
+
+
+        X_f = Sampler.uniform_sampler(self)
+        train_input = {self.X_i: input_dict['X_i'], self.u_i: input_dict['u_i'],
+                       self.X_b: input_dict['X_b'], self.u_b: input_dict['u_b'],
+                       self.X_f: X_f
+                       }       
+                                                                                              
         self.optimiser_QN.minimize(self.sess,  
                                 feed_dict = train_input,         
                                 fetches = [self.loss], 
@@ -124,6 +162,7 @@ class TrainingGraph(Network):
                                     
         print("Total Training Time : {}".format(time.time() - start_time))
         
+        return np.asarray(self.loss_list)
             
     def predict(self, X):
         u = self.sess.run(self.u, {self.X: X})
